@@ -1,0 +1,7 @@
+.gradle/
+build/
+app/build/
+*.keystore
+app/src/main/assets/www/
+ci-out/
+local.properties

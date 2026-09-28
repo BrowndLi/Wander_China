@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.browndli.wanderchina'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.browndli.wanderchina'
+        minSdk 24
+        targetSdk 34
+        versionCode Integer.parseInt(System.getenv('VERSION_CODE') ?: '1')
+        versionName System.getenv('VERSION_NAME') ?: '1.0'
+    }
+
+    // 签名密钥由 GitHub Actions 在每次构建时临时生成，不保存在仓库里
+    signingConfigs {
+        release {
+            storeFile file(System.getenv('KEYSTORE_PATH') ?: 'release.keystore')
+            storePassword System.getenv('KEYSTORE_PASSWORD') ?: ''
+            keyAlias 'wanderchina'
+            keyPassword System.getenv('KEYSTORE_PASSWORD') ?: ''
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+}
