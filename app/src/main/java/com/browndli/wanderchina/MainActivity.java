@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.webkit.GeolocationPermissions;
+import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebBackForwardList;
 import android.webkit.WebChromeClient;
@@ -47,7 +48,8 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setGeolocationEnabled(true);
         s.setAllowFileAccess(true);
-        s.setUserAgentString(s.getUserAgentString() + " WanderChinaApp/1.0");
+        s.setUserAgentString(s.getUserAgentString() + " WanderChinaApp/1.1");
+        web.addJavascriptInterface(new NativeBridge(), "WanderChinaNative");
 
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -106,14 +108,64 @@ public class MainActivity extends Activity {
         if ("https".equals(scheme) && SITE_HOST.equals(uri.getHost()) && path != null && path.startsWith(SITE_PATH)) {
             return false;
         }
+        if ("intent".equals(scheme)) {
+            openIntentUri(uri.toString());
+            return true;
+        }
+        tryView(uri);
+        return true;
+    }
+
+    /** 用系统打开一个地址；手机上没有能打开它的应用时返回 false。 */
+    private boolean tryView(Uri uri) {
         try {
             Intent intent = new Intent(Intent.ACTION_VIEW, uri);
             intent.addCategory(Intent.CATEGORY_BROWSABLE);
             startActivity(intent);
+            return true;
         } catch (ActivityNotFoundException e) {
-            // 手机上没有能打开这个链接的应用，忽略
+            return false;
         }
-        return true;
+    }
+
+    /** intent:// 链接：能打开对应 App 就打开，否则打开链接里自带的后备网页。 */
+    private void openIntentUri(String url) {
+        try {
+            Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+            intent.addCategory(Intent.CATEGORY_BROWSABLE);
+            intent.setComponent(null);
+            startActivity(intent);
+        } catch (Exception e) {
+            try {
+                Intent parsed = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+                String fallback = parsed.getStringExtra("browser_fallback_url");
+                if (fallback != null) tryView(Uri.parse(fallback));
+            } catch (Exception ignored) {
+                // 链接格式不对，忽略
+            }
+        }
+    }
+
+    /** 提供给网页调用：先打开 App，没装就打开网页版。返回 true 表示打开了 App。 */
+    private final class NativeBridge {
+        @JavascriptInterface
+        public boolean open(String app, String webUrl) {
+            if (app != null && !app.isEmpty() && tryView(Uri.parse(app))) return true;
+            if (webUrl != null && !webUrl.isEmpty()) tryView(Uri.parse(webUrl));
+            return false;
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (web != null) web.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (web != null) web.onResume();
     }
 
     @Override
