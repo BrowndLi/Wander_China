@@ -1,0 +1,21 @@
+{
+  "name": "游迹中国 Wander China",
+  "short_name": "游迹中国",
+  "description": "按热度、著名度、好玩度推荐中国城市景点，热度实时更新，离线可用。",
+  "lang": "zh-CN",
+  "id": "./",
+  "start_url": "./#home",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F2F5F3",
+  "theme_color": "#FFFFFF",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "全国榜单", "short_name": "榜单", "url": "./#rank", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "我的收藏", "short_name": "收藏", "url": "./#fav", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+  ]
+}
