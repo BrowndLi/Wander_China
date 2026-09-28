@@ -2,7 +2,7 @@ name: 构建安卓安装包
 
 on:
   push:
-    branches: [main]
+    branches: [main, ci-dryrun]
   workflow_dispatch:
 
 permissions:
@@ -15,6 +15,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      signing: ${{ steps.sign.outputs.signing }}
     steps:
       - uses: actions/checkout@v4
 
@@ -35,13 +37,40 @@ jobs:
           git show FETCH_HEAD:index.html > app/src/main/assets/www/index.html
           ls -la app/src/main/assets/www
 
-      - name: 生成本次构建的签名密钥
+      # 仓库设置了两个签名密钥时用固定签名，以后的新版本可以直接覆盖安装；没有设置时临时生成
+      - name: 准备签名密钥
+        id: sign
         shell: bash
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          pass=$(openssl rand -hex 16)
-          echo "KEYSTORE_PASSWORD=$pass" >> "$GITHUB_ENV"
-          keytool -genkeypair -keystore app/release.keystore -alias wanderchina -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass "$pass" -keypass "$pass" -dname "CN=Wander China, O=BrowndLi, C=CN"
+          if [ -z "$KS_B64" ] && [ -f ci/dryrun-keystore.p12 ]; then
+            echo "演练分支：使用一次性测试密钥"
+            KS_B64=$(base64 -w0 ci/dryrun-keystore.p12)
+            KS_PASS=$(tr -d '\r\n' < ci/dryrun-keystore.pass)
+            echo "::add-mask::$KS_PASS"
+          fi
+          if [ -n "$KS_B64" ] && [ -n "$KS_PASS" ]; then
+            printf '%s' "$KS_B64" | tr -d '\r\n ' | base64 -d > app/release.keystore
+            alias=$(keytool -list -keystore app/release.keystore -storetype pkcs12 -storepass "$KS_PASS" 2>/dev/null | grep -i "PrivateKeyEntry" | head -1 | cut -d, -f1)
+            if [ -z "$alias" ]; then
+              echo "::error::签名密钥读取失败，请检查 ANDROID_KEYSTORE_BASE64 和 ANDROID_KEYSTORE_PASSWORD 是否完整复制"
+              exit 1
+            fi
+            echo "KEYSTORE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=$alias" >> "$GITHUB_ENV"
+            echo "signing=fixed" >> "$GITHUB_OUTPUT"
+            echo "使用固定签名"
+          else
+            pass=$(openssl rand -hex 16)
+            keytool -genkeypair -keystore app/release.keystore -storetype pkcs12 -alias wanderchina -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$pass" -keypass "$pass" -dname "CN=Wander China, O=BrowndLi, C=CN"
+            echo "KEYSTORE_PASSWORD=$pass" >> "$GITHUB_ENV"
+            echo "KEY_ALIAS=wanderchina" >> "$GITHUB_ENV"
+            echo "signing=temporary" >> "$GITHUB_OUTPUT"
+            echo "::warning::没有设置固定签名密钥，本次使用临时签名"
+          fi
 
       - name: 构建
         shell: bash
@@ -53,6 +82,31 @@ jobs:
           gradle assembleRelease --no-daemon --stacktrace 2>&1 | tee ci-out/build.log
           cp app/build/outputs/apk/release/app-release.apk WanderChina.apk
           ls -la WanderChina.apk | tee -a ci-out/build.log
+
+      # 和上一个发布版本对比签名证书，一致才能直接覆盖安装
+      - name: 核对签名
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          digest() { "$bt/apksigner" verify --print-certs "$1" | grep -m1 "SHA-256 digest" | sed 's/.*: //'; }
+          new=$(digest WanderChina.apk)
+          {
+            echo "签名方式：${{ steps.sign.outputs.signing }}"
+            echo "本次证书 SHA-256：$new"
+          } | tee ci-out/signing.txt
+          if gh release download --repo "$GITHUB_REPOSITORY" --pattern WanderChina.apk --dir prev 2>/dev/null; then
+            old=$(digest prev/WanderChina.apk)
+            echo "上一版证书 SHA-256：$old" | tee -a ci-out/signing.txt
+            if [ "$new" = "$old" ]; then
+              echo "结论：与上一版签名一致，可以直接覆盖安装" | tee -a ci-out/signing.txt
+            else
+              echo "结论：与上一版签名不同，安装这一版前需要先卸载旧版" | tee -a ci-out/signing.txt
+            fi
+          else
+            echo "结论：还没有发布过的版本可以对比" | tee -a ci-out/signing.txt
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
@@ -105,6 +159,7 @@ jobs:
 
   release:
     needs: [build, smoke-test]
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -115,16 +170,22 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          SIGNING: ${{ needs.build.outputs.signing }}
         run: |
           ver="1.0.${GITHUB_RUN_NUMBER}"
-          cat > notes.md <<'NOTES'
-          游迹中国 Wander China 安卓安装包。
-
-          安装：用安卓手机打开这个页面，下载 WanderChina.apk。第一次安装时，按提示允许浏览器“安装未知应用”。
-
-          应用打开的是手机版网站 https://browndli.github.io/Wander_China/ 。有网络时自动获取最新热度，没有网络也能使用。
-
-          每次构建使用新的签名。安装更新的版本前，需要先卸载旧版；卸载会清空收藏，可以先在「我的收藏」里导出备份。
-          NOTES
+          if [ "$SIGNING" = "fixed" ]; then
+            sign_note="这个版本使用固定签名。以后的新版本可以直接覆盖安装，不用卸载，收藏也会保留。"
+          else
+            sign_note="这个版本使用临时签名。安装更新的版本前需要先卸载旧版；卸载会清空收藏，可以先在「我的收藏」里导出备份。"
+          fi
+          {
+            echo "游迹中国 Wander China 安卓安装包。"
+            echo
+            echo "安装：用安卓手机打开这个页面，下载 WanderChina.apk。第一次安装时，按提示允许浏览器“安装未知应用”。"
+            echo
+            echo "应用打开的是手机版网站 https://browndli.github.io/Wander_China/ 。有网络时自动获取最新热度，没有网络也能使用。"
+            echo
+            echo "$sign_note"
+          } > notes.md
           gh release create "android-v$ver" WanderChina.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "游迹中国 安卓版 $ver" --notes-file notes.md --latest

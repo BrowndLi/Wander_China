@@ -5,3 +5,5 @@ app/build/
 app/src/main/assets/www/
 ci-out/
 local.properties
+*.p12
+*.pfx

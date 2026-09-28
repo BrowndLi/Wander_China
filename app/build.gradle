@@ -14,12 +14,14 @@ android {
         versionName System.getenv('VERSION_NAME') ?: '1.0'
     }
 
-    // 签名密钥由 GitHub Actions 在每次构建时临时生成，不保存在仓库里
+    // 签名：仓库里设置了 ANDROID_KEYSTORE_BASE64 和 ANDROID_KEYSTORE_PASSWORD 两个密钥时用固定签名，
+    // 没有设置时由 GitHub Actions 临时生成。密钥文件不保存在仓库里。
     signingConfigs {
         release {
             storeFile file(System.getenv('KEYSTORE_PATH') ?: 'release.keystore')
+            storeType 'pkcs12'
             storePassword System.getenv('KEYSTORE_PASSWORD') ?: ''
-            keyAlias 'wanderchina'
+            keyAlias System.getenv('KEY_ALIAS') ?: 'wanderchina'
             keyPassword System.getenv('KEYSTORE_PASSWORD') ?: ''
         }
     }
