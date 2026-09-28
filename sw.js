@@ -3,7 +3,7 @@
  * 图标、清单等静态文件：缓存优先，后台静默更新。
  * 版本号由 tools/build.sh 打包时写入，版本变化后旧缓存会被清理。
  */
-const VERSION = '7031ea98d093';
+const VERSION = '23a53528f8fa';
 const CACHE = 'youji-' + VERSION;
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png'];
 

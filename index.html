@@ -84,7 +84,7 @@ h1,h2,h3,h4{text-wrap:balance}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* ---------- 顶栏 ---------- */
-.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:var(--surface);background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
 .topbar .wrap{display:flex;align-items:center;gap:14px;height:var(--topbar-h)}
 .brand{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-weight:700;font-size:20px;color:var(--text);text-decoration:none;white-space:nowrap;letter-spacing:.04em}
 .brand svg{width:28px;height:28px;flex:none}
@@ -134,7 +134,7 @@ h1,h2,h3,h4{text-wrap:balance}
 .btn .ic{width:15px;height:15px}
 .btn.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-ink)}
 .btn.primary:hover{background:var(--primary-2);border-color:var(--primary-2)}
-.btn.danger{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,var(--line))}
+.btn.danger{color:var(--danger);border-color:var(--danger);border-color:color-mix(in srgb,var(--danger) 40%,var(--line))}
 .btn.danger:hover{background:var(--danger-soft)}
 .btn.sm{padding:5px 10px;font-size:12.5px}
 .btn.want.on{background:var(--fun-soft);border-color:transparent;color:var(--fun-ink)}
@@ -4740,7 +4740,9 @@ const UA = navigator.userAgent || '';
 const isIOS = /iphone|ipad|ipod/i.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const inWeChat = /MicroMessenger/i.test(UA);
 const topWindow = (() => { try { return window.top === window.self; } catch (e) { return false; } })();
-const standalone = () => !!((window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true);
+const inApp = /WanderChinaApp\//.test(UA);   // 安卓安装包里的网页组件会在 UA 末尾加上这个标记
+const standalone = () => inApp || !!((window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true);
+const APK_URL = 'https://github.com/BrowndLi/Wander_China/releases/latest/download/WanderChina.apk';
 // 只有发布到 https 网址、带应用清单的手机版才启用安装和离线缓存；本地文件版和嵌入式网页版不启用
 const pwa = {
   enabled: !!document.querySelector('link[rel="manifest"]') && 'serviceWorker' in navigator && !!window.isSecureContext && /^https?:$/.test(location.protocol) && topWindow,
@@ -4768,6 +4770,7 @@ function installBannerHTML() {
 const APP_URL = 'https://browndli.github.io/Wander_China/';
 function installCardHTML() {
   let state;
+  if (inApp) return '<p class="status ok">现在正在安卓应用里运行。有网络时会自动获取最新热度，没有网络也能打开。</p>';
   if (standalone()) state = '<p class="status ok">现在正以应用方式运行。</p>';
   else if (pwa.enabled && pwa.prompt) state = `<div class="actions" style="margin-bottom:10px"><button type="button" class="btn primary" data-act="install">${icon('download')}安装到这台设备</button></div>`;
   else if (pwa.enabled) state = `<p>${esc(installSteps())}</p>`;
@@ -4775,7 +4778,7 @@ function installCardHTML() {
   else state = '<p>这是本地文件版，不能直接安装。用手机打开下面的手机版网址就能安装。</p>';
   return state + `<p>手机版网址：<a href="${APP_URL}" target="_blank" rel="noopener noreferrer">${APP_URL}</a> <button type="button" class="linkbtn" data-act="copy-url">复制网址</button></p><ul>
     <li>iPhone：用 Safari 打开，点分享按钮，选“添加到主屏幕”。</li>
-    <li>安卓：用 Chrome 或 Edge 打开，点“安装”，或在菜单里选“添加到主屏幕”。</li>
+    <li>安卓：用 Chrome 或 Edge 打开，点“安装”，或在菜单里选“添加到主屏幕”。也可以直接下载安卓安装包 <a href="${APK_URL}" target="_blank" rel="noopener noreferrer">WanderChina.apk</a>。</li>
     <li>装好后没有网络也能打开，热度照常在手机上计算；地图、门票等外部平台链接需要联网。</li>
     <li>有网络时会自动获取最新版本，每周的热度更新也会同步过来。</li></ul>`;
 }
@@ -4837,6 +4840,13 @@ window.YOUJI = {
   cityAt(id, when) { const c = cityById.get(id), t = when ? new Date(when).getTime() : Date.now(); return c ? +f1(cityHeat(c, t)) : null; },
   explain(id, when) { const a = spotById.get(id); return a ? spotDetail(a, when ? new Date(when).getTime() : Date.now()) : null; },
   refresh: () => tick(true),
+  // 安卓应用的返回键先调用这里：有打开的详情或搜索结果就先关掉，返回 true 表示已处理
+  back() {
+    if (dlg.open) { dlg.close(); return true; }
+    const box = $$('.search-results').find(b => !b.hidden);
+    if (box) { box.hidden = true; return true; }
+    return false;
+  },
   data: D
 };
 })();
