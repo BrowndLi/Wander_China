@@ -71,6 +71,8 @@
 
 *,*::before,*::after{box-sizing:border-box}
 html,body{min-height:100%}
+/* 保险：即使某个元素超宽，也不让整页横向变宽。手机浏览器遇到超宽页面会扩大布局视口，弹窗等固定定位元素会跟着错位 */
+html{overflow-x:hidden}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:var(--nav-h)}
 a{color:var(--primary-2)}
 button{font:inherit;color:inherit}
@@ -358,7 +360,7 @@ table.tbl td.num{white-space:nowrap}
 .fclegend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 .toolbar{position:sticky;top:calc(var(--topbar-h) + env(safe-area-inset-top,0px));z-index:40;background:var(--bg);padding-block:12px 10px;display:flex;flex-direction:column;gap:8px;border-bottom:1px solid var(--line);margin-bottom:14px}
 .toolbar .row{display:flex;align-items:center;gap:10px;min-width:0}
-.toolbar .row.wrapit{flex-wrap:wrap}
+.toolbar .row:first-child,.toolbar .row.wrapit{flex-wrap:wrap;row-gap:6px}
 .toolbar .count{font-size:12.5px;color:var(--muted);margin-left:auto;white-space:nowrap}
 .toolbar .lbl{font-size:12.5px;color:var(--muted);white-space:nowrap;flex:none}
 .weights{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12.5px}
@@ -443,9 +445,9 @@ table.tbl td.num{white-space:nowrap}
 .ev.now .dt{color:var(--hot-ink);font-weight:700}
 
 /* ---------- 弹窗 ---------- */
-dialog{border:0;border-radius:18px;padding:0;width:min(780px,calc(100vw - 24px));max-height:calc(100vh - 24px);background:var(--surface);color:var(--text);box-shadow:0 30px 80px -20px rgba(0,0,0,.5);margin:auto}
+dialog{border:0;border-radius:18px;padding:0;width:min(780px,calc(100% - 24px));max-width:calc(100% - 24px);max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);background:var(--surface);color:var(--text);box-shadow:0 30px 80px -20px rgba(0,0,0,.5);margin:auto}
 dialog::backdrop{background:rgba(8,16,14,.55)}
-.dlg{position:relative;max-height:calc(100vh - 24px);overflow:auto;padding:22px 24px 24px;overscroll-behavior:contain}
+.dlg{position:relative;max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);overflow:auto;padding:22px 24px 24px;overscroll-behavior:contain}
 .dlg-close{position:sticky;top:0;float:right;margin:-8px -10px 0 8px;z-index:3;background:var(--surface)}
 .dlg .head{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
 .dlg .crumb{font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -531,7 +533,10 @@ footer .wrap{display:flex;justify-content:space-between;gap:8px 16px;flex-wrap:w
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .favcols{grid-template-columns:minmax(0,1fr)}
   .platforms{grid-template-columns:minmax(0,1fr)}
-  .dlg{padding:18px 16px 20px}
+  /* 手机上景点详情占满整屏，像 App 里的一个页面 */
+  dialog{width:100%;max-width:100%;height:100%;max-height:100%;margin:0;border-radius:0;box-shadow:none}
+  .dlg{height:100%;max-height:none;padding:max(12px,env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px))}
+  .dlg-close{margin:0 -4px 0 8px}
   .dlg .grid2{grid-template-columns:minmax(0,1fr)}
   .scores.four{grid-template-columns:repeat(2,1fr)}
   .ev{grid-template-columns:78px minmax(0,1fr) auto}
@@ -4711,7 +4716,9 @@ $('#hotpill').addEventListener('click', () => { location.hash = '#about'; });
 
 /* 主题：跟随系统 → 浅色 → 深色 */
 const THEMES = { auto: ['auto', '跟随系统'], light: ['sun', '浅色'], dark: ['moon', '深色'] };
-let theme = store.get('yj.theme', 'auto');
+// 手机预览页会用 ?theme=light 或 ?theme=dark 指定主题，这时不保存到本地
+const urlTheme = (location.search.match(/[?&]theme=(auto|light|dark)\b/) || [])[1] || '';
+let theme = urlTheme || store.get('yj.theme', 'auto');
 if (!THEMES[theme]) theme = 'auto';
 function applyTheme() {
   const root = document.documentElement;
@@ -4723,7 +4730,7 @@ function applyTheme() {
 }
 function cycleTheme() {
   theme = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto';
-  store.set('yj.theme', theme);
+  if (!urlTheme) store.set('yj.theme', theme);
   applyTheme();
   toast(`主题：${THEMES[theme][1]}`);
 }
@@ -4740,7 +4747,8 @@ const UA = navigator.userAgent || '';
 const isIOS = /iphone|ipad|ipod/i.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const inWeChat = /MicroMessenger/i.test(UA);
 const topWindow = (() => { try { return window.top === window.self; } catch (e) { return false; } })();
-const inApp = /WanderChinaApp\//.test(UA);   // 安卓安装包里的网页组件会在 UA 末尾加上这个标记
+// 安卓安装包里的网页组件会在 UA 末尾加上 WanderChinaApp；手机预览页用 ?app=1 模拟应用里的样子
+const inApp = /WanderChinaApp\//.test(UA) || /[?&]app=1\b/.test(location.search);
 const standalone = () => inApp || !!((window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true);
 const APK_URL = 'https://github.com/BrowndLi/Wander_China/releases/latest/download/WanderChina.apk';
 // 只有发布到 https 网址、带应用清单的手机版才启用安装和离线缓存；本地文件版和嵌入式网页版不启用
@@ -4749,7 +4757,7 @@ const pwa = {
   prompt: null,
   dismissed: !!store.get('yj.installDismissed', false)
 };
-const canLocate = 'geolocation' in navigator && !!window.isSecureContext && topWindow && Object.keys(GEO).length > 0;
+const canLocate = 'geolocation' in navigator && !!window.isSecureContext && (topWindow || inApp) && Object.keys(GEO).length > 0;
 let me = null; // 本次打开期间的位置，只存在内存里，不保存、不上传
 
 if (pwa.enabled) {
