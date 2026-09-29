@@ -1,0 +1,16 @@
+09-29 00:46:34.794   505   535 I ActivityManager: Start proc 2237:com.android.webview:webview_service/u0a102 for service {com.android.webview/org.chromium.android_webview.services.VariationsSeedServer}
+09-29 00:46:34.998  2139  2261 W chromium: [WARNING:dns_config_service_android.cc(115)] Failed to read DnsConfig.
+09-29 00:46:35.172   505   535 I ActivityManager: Start proc 2290:com.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0ai9000 for  {com.browndli.wanderchina/org.chromium.content.app.SandboxedProcessService0:0}
+09-29 00:46:35.203  2290  2290 I cr_WebViewApkApp: Launched version=113.0.5672.136 minSdkVersion=1 isBundle=false processName=com.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0
+09-29 00:46:35.209   505   535 I ActivityManager: Start proc 2317:com.android.webview:webview_apk/u0a102 for service {com.android.webview/org.chromium.android_webview.nonembedded.AwComponentUpdateService}
+09-29 00:46:35.376  2139  2300 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+09-29 00:47:09.122   505  1074 I ActivityManager: Killing 2290:com.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0a141i0 (adj 0): isolated not needed
+09-29 00:47:11.671  2507  2543 W chromium: [WARNING:dns_config_service_android.cc(115)] Failed to read DnsConfig.
+09-29 00:47:11.703   505   535 I ActivityManager: Start proc 2553:com.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0i1 for  {com.browndli.wanderchina/org.chromium.content.app.SandboxedProcessService0:0}
+09-29 00:47:11.732  2553  2553 I cr_WebViewApkApp: Launched version=113.0.5672.136 minSdkVersion=1 isBundle=false processName=com.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0
+09-29 00:47:12.008  2507  2552 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!
+09-29 00:47:24.504   505  2497 I ActivityManager: Killing 2553:com.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0a141i1 (adj 0): isolated not needed
+09-29 00:47:27.385   505   535 I ActivityManager: Start proc 2660:com.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0i2 for  {com.browndli.wanderchina/org.chromium.content.app.SandboxedProcessService0:0}
+09-29 00:47:27.403  2660  2660 I cr_WebViewApkApp: Launched version=113.0.5672.136 minSdkVersion=1 isBundle=false processName=com.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0
+09-29 00:47:27.404  2632  2663 W chromium: [WARNING:dns_config_service_android.cc(115)] Failed to read DnsConfig.
+09-29 00:47:27.641  2632  2691 W chromium: [WARNING:display_webview.cc(32)] WebView overlays are enabled!

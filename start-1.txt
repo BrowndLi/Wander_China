@@ -1,0 +1,7 @@
+Starting: Intent { cmp=com.browndli.wanderchina/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: com.browndli.wanderchina/.MainActivity
+TotalTime: 1931
+WaitTime: 2005
+Complete
