@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       signing: ${{ steps.sign.outputs.signing }}
+      cert_changed: ${{ steps.cert.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -85,6 +86,7 @@ jobs:
 
       # 和上一个发布版本对比签名证书，一致才能直接覆盖安装
       - name: 核对签名
+        id: cert
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -101,11 +103,14 @@ jobs:
             echo "上一版证书 SHA-256：$old" | tee -a ci-out/signing.txt
             if [ "$new" = "$old" ]; then
               echo "结论：与上一版签名一致，可以直接覆盖安装" | tee -a ci-out/signing.txt
+              echo "changed=no" >> "$GITHUB_OUTPUT"
             else
               echo "结论：与上一版签名不同，安装这一版前需要先卸载旧版" | tee -a ci-out/signing.txt
+              echo "changed=yes" >> "$GITHUB_OUTPUT"
             fi
           else
             echo "结论：还没有发布过的版本可以对比" | tee -a ci-out/signing.txt
+            echo "changed=none" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/upload-artifact@v4
@@ -171,9 +176,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SIGNING: ${{ needs.build.outputs.signing }}
+          CERT_CHANGED: ${{ needs.build.outputs.cert_changed }}
         run: |
           ver="1.0.${GITHUB_RUN_NUMBER}"
-          if [ "$SIGNING" = "fixed" ]; then
+          if [ "$SIGNING" = "fixed" ] && [ "$CERT_CHANGED" = "yes" ]; then
+            sign_note="这个版本开始使用固定签名。之前的版本是临时签名，所以从旧版升级到这一版需要先卸载一次；卸载会清空收藏，可以先在「我的收藏」里导出备份。以后的新版本都可以直接覆盖安装，收藏也会保留。"
+          elif [ "$SIGNING" = "fixed" ]; then
             sign_note="这个版本使用固定签名。以后的新版本可以直接覆盖安装，不用卸载，收藏也会保留。"
           else
             sign_note="这个版本使用临时签名。安装更新的版本前需要先卸载旧版；卸载会清空收藏，可以先在「我的收藏」里导出备份。"
